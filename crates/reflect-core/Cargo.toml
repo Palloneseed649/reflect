@@ -1,0 +1,16 @@
+[package]
+name = "reflect-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core types, traits, and pattern engine for reflect"
+
+[dependencies]
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }
+strsim = { workspace = true }
+regex = { workspace = true }

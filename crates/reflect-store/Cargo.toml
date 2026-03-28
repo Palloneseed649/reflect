@@ -1,0 +1,16 @@
+[package]
+name = "reflect-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SQLite storage backend for reflect"
+
+[dependencies]
+reflect-core = { path = "../reflect-core" }
+rusqlite = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }

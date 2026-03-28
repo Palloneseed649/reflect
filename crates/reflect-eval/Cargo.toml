@@ -1,0 +1,15 @@
+[package]
+name = "reflect-eval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Evaluation runners and output parsers for reflect"
+
+[dependencies]
+reflect-core = { path = "../reflect-core" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+regex = { workspace = true }
+tracing = { workspace = true }
