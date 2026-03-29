@@ -620,6 +620,7 @@ name = "reflect-mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "reflect-core",
  "reflect-eval",
  "reflect-store",
@@ -632,6 +633,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
