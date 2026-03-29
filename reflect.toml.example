@@ -1,0 +1,47 @@
+# reflect configuration
+# Place at: ./reflect.toml or ~/.config/reflect/reflect.toml
+# Override with: REFLECT_CONFIG=/path/to/config.toml
+
+[storage]
+path = ".reflect/reflect.db"
+# backend = "sqlite"          # default
+# backend = "ctxgraph"        # requires --features ctxgraph
+
+# Built-in evaluators (these defaults are used if not overridden)
+[eval.cargo_test]
+command = "cargo test"
+timeout_secs = 60
+
+[eval.pytest]
+command = "pytest --tb=short -q"
+timeout_secs = 120
+
+[eval.eslint]
+command = "npx eslint . --format stylish"
+timeout_secs = 60
+
+[eval.tsc]
+command = "npx tsc --noEmit"
+timeout_secs = 60
+
+# Custom evaluator — any command that returns exit 0 for pass
+[eval.mypy]
+command = "mypy src/"
+timeout_secs = 90
+
+[recall]
+default_limit = 5
+dedup_threshold = 0.75        # normalized Levenshtein similarity
+
+# Custom pattern rules (extend the built-in patterns)
+[[patterns]]
+evaluator = "pytest"
+regex = "connection refused"
+id = "db-connection-refused"
+category = "infrastructure"
+
+[[patterns]]
+evaluator = "cargo_test"
+regex = "deadlock"
+id = "rust-deadlock"
+category = "concurrency"

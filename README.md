@@ -40,8 +40,8 @@ This means reflect is **fast, deterministic, and has zero LLM cost** for the pat
 reflect/
 ├── crates/
 │   ├── reflect-core/    # Types, Storage trait, pattern engine, dedup
-│   ├── reflect-eval/    # Test output parsers (cargo_test), command runner
-│   ├── reflect-store/   # SQLite + FTS5 implementation
+│   ├── reflect-eval/    # Test output parsers (cargo_test, pytest, eslint, tsc), command runner
+│   ├── reflect-store/   # SQLite + FTS5 (default), optional ctxgraph backend
 │   └── reflect-mcp/     # MCP server (rmcp v1.3), 7 tools, config
 ├── tests/fixtures/      # Captured test outputs for parser testing
 ├── Cargo.toml           # Workspace root
@@ -52,7 +52,7 @@ reflect/
 
 | Tool | Purpose |
 |---|---|
-| `evaluate_output` | Run evaluators (cargo test, etc.) and get structured pass/fail signals |
+| `evaluate_output` | Run evaluators (cargo test, pytest, eslint, tsc, custom) and get structured pass/fail signals |
 | `reflect_on_output` | Store a reflection with pattern extraction and dedup checking |
 | `store_reflection` | Store a standalone lesson without evaluation signals |
 | `recall_reflections` | Search past lessons by task description and tags (FTS5) |
@@ -137,17 +137,33 @@ reflect works with zero configuration. Optionally create `reflect.toml` in your 
 ```toml
 [storage]
 path = ".reflect/reflect.db"    # default
+# backend = "sqlite"            # default
+# backend = "ctxgraph"          # requires --features ctxgraph
 
 [eval.cargo_test]
 command = "cargo test"
 timeout_secs = 60
 
 [eval.pytest]
-command = "pytest --tb=short"
+command = "pytest --tb=short -q"
 timeout_secs = 120
+
+[eval.eslint]
+command = "npx eslint . --format stylish"
+timeout_secs = 60
+
+[eval.tsc]
+command = "npx tsc --noEmit"
+timeout_secs = 60
+
+# Custom evaluator — any command that returns exit 0 for pass
+[eval.mypy]
+command = "mypy src/"
+timeout_secs = 90
 
 [recall]
 default_limit = 5
+dedup_threshold = 0.75          # normalized Levenshtein similarity
 
 # Custom pattern rules
 [[patterns]]
@@ -166,8 +182,8 @@ Environment variables:
 **Why regex pattern matching instead of LLM classification?**
 Deterministic, zero-cost, reproducible. Error messages follow predictable formats. Custom rules in TOML for project-specific patterns.
 
-**Why SQLite + FTS5 instead of vector embeddings?**
-No external dependencies, instant startup, full-text search is good enough for task-description similarity. Embedding-based search is planned as an optional backend (Phase 3).
+**Why SQLite + FTS5 as default instead of vector embeddings?**
+No external dependencies, instant startup, full-text search is good enough for task-description similarity. For better recall, enable the optional ctxgraph backend which adds 384-dim embedding search with RRF ranking.
 
 **Why the agent provides critique text?**
 The agent has full context (code, intent, constraints). reflect adds structure (timestamps, confidence, patterns, dedup) — each does what it's best at.
@@ -178,11 +194,29 @@ Time-ordered, sortable, globally unique. No sequence coordination needed.
 **Why Laplace smoothing for confidence?**
 `0.5 + (validations - contradictions) / (validations + contradictions + 2)` — starts neutral (0.5), converges with evidence, never reaches 0 or 1 with finite data.
 
+## ctxgraph Backend (Optional)
+
+For embedding-based semantic search and cross-project reflection retrieval, build with the ctxgraph feature:
+
+```bash
+cargo build --release --features ctxgraph
+```
+
+Then set the backend in `reflect.toml`:
+
+```toml
+[storage]
+backend = "ctxgraph"
+path = ".reflect/reflect.db"
+```
+
+This uses [ctxgraph](https://github.com/rohansx/ctxgraph)'s fused search (FTS5 + 384-dim AllMiniLML6V2 embeddings with RRF ranking) for more accurate recall. Reflections are stored as ctxgraph Episodes with graph-structured pattern tracking via Entities and Edges.
+
 ## Roadmap
 
 - **Phase 1** (done): Core loop — cargo_test parser, SQLite+FTS5, 7 MCP tools, pattern engine, dedup
-- **Phase 2**: Multi-language — pytest, eslint, tsc parsers + custom command runner
-- **Phase 3**: Semantic search via [ctxgraph](https://github.com/rohansx/ctxgraph) as optional storage backend
+- **Phase 2** (done): Multi-language — pytest, eslint, tsc parsers, configurable dedup, pattern rules for Python/JS/TS
+- **Phase 3** (done): Semantic search via [ctxgraph](https://github.com/rohansx/ctxgraph) as optional storage backend (`--features ctxgraph`)
 - **Phase 4**: Distribution — crates.io, Homebrew, documentation site
 
 ## References
