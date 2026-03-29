@@ -19,9 +19,9 @@ default = []
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(feature, values("ctxgraph"))'] }
 
 [dependencies]
-reflect-core = { path = "../reflect-core" }
-reflect-eval = { path = "../reflect-eval" }
-reflect-store = { path = "../reflect-store" }
+reflect-core = { path = "../reflect-core", version = "0.1.0" }
+reflect-eval = { path = "../reflect-eval", version = "0.1.0" }
+reflect-store = { path = "../reflect-store", version = "0.1.0" }
 rmcp = { workspace = true }
 schemars = { workspace = true }
 tokio = { workspace = true }
